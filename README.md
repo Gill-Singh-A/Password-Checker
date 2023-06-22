@@ -15,6 +15,11 @@ For example:
 ```bash
 python password_checker.py file_1 file_2 ...
 ```
+<!-- -->
+Install the dependencies:
+```bash
+pip install -r requirements.txt
+```
 
 ## Output
 The program outputs the checked passwords on the command line interface in the format
