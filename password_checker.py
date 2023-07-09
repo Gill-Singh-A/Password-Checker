@@ -24,7 +24,7 @@ def check_password(password):
 
 def main(args):
     for argument in args:
-        with open(argument, 'r', encoding='ansi') as file:
+        with open(argument, 'r') as file:
             passwords = file.readlines()
             passwords = [password[:len(password)-(password[-1]=='\n')] for password in passwords]
             with open("Checked "+argument, 'w') as output:
