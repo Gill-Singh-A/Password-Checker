@@ -28,17 +28,22 @@ api = "https://api.pwnedpasswords.com/range/"
 api_request_hash_length = 5
 
 def check_passwords(hash_passwords):
+    display(':', f"Pre-processing Data for Requests")
     password_leaks = {}
-    api_request_hashes = list(set([hash[:api_request_hash_length] for hash in hash_passwords.keys()]))
-    api_request_hashes.sort()
-    for api_request_hash in api_request_hashes:
+    api_request_hashes = {}
+    for hash in hash_passwords.keys():
+        if hash[:api_request_hash_length] not in api_request_hashes.keys():
+            api_request_hashes[hash[:api_request_hash_length]] = []
+        api_request_hashes[hash[:api_request_hash_length]].append(hash)
+    display('+', f"Done Pre-processing Data for Requests")
+    for api_request_hash, hashes in api_request_hashes.items():
         response = requests.get(f"{api}{api_request_hash}")
         if response.status_code != 200:
             display('-', f"Returned Status Code = {Back.YELLOW}{response.status_code}{Back.RESET} for Hash Request : {Back.MAGENTA}{api_request_hash}{Back.RESET}")
             continue
         hash_leaks = {line.split(':')[0]: int(line.split(':')[1].strip()) for line in response.text.split('\n')}
-        print('\n'.join(f"{Fore.GREEN}{hash}{Fore.WHITE}:{Fore.BLUE}{password}{Fore.WHITE} => {Fore.CYAN}{hash_leaks[hash[api_request_hash_length:]]}{Fore.RESET}" for hash, password in hash_passwords.items() if hash[api_request_hash_length:] in hash_leaks.keys()))
-        password_leaks.update({password: int(hash_leaks[hash[api_request_hash_length:]]) for hash, password in hash_passwords.items() if hash[api_request_hash_length:] in hash_leaks.keys()})
+        print('\n'.join(f"{Fore.GREEN}{hash}{Fore.WHITE}:{Fore.BLUE}{hash_passwords[hash]}{Fore.WHITE} => {Fore.RED}{hash_leaks[hash[api_request_hash_length:]]}{Fore.RESET}" for hash in hashes if hash[api_request_hash_length:] in hash_leaks.keys()))
+        password_leaks.update({hash_passwords[hash]: int(hash_leaks[hash[api_request_hash_length:]]) for hash in hashes if hash[api_request_hash_length:] in hash_leaks.keys()})
     return password_leaks
 
 def main(arguments):
@@ -55,7 +60,7 @@ def main(arguments):
             hashed_passwords = {hash: hashed_passwords[hash] for hash in hashes}
             t2 = time()
             display('+', f"Done Making SHA Hashes of Passwords")
-            display(':', f"Time Taken = {Back.MAGENTA}{t2-t1:.2f} seconds{Back.RESET}")
+            display(':', f"Time Taken = {Back.MAGENTA}{t2-t1:.2f} seconds{Back.RESET} {Back.MAGENTA}{len(hashes)/(t2-t1):.2f} hashes/seconds{Back.RESET}")
             password_leaks = check_passwords(hashed_passwords)
             with open(f"Checked {argument}", 'w') as output_file:
                 output_file.write('\n'.join([f"{password}:{leaks}" for password, leaks in password_leaks.items()]))
