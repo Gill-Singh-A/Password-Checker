@@ -32,15 +32,11 @@ def check_passwords(hash_passwords):
     api_request_hashes = list(set([hash[:api_request_hash_length] for hash in hash_passwords.keys()]))
     api_request_hashes.sort()
     for api_request_hash in api_request_hashes:
-        display(':', f"Requesting {Back.MAGENTA}{api_request_hash}{Back.RESET}", start='\n')
-        t1 = time()
         response = requests.get(f"{api}{api_request_hash}")
         if response.status_code != 200:
             display('-', f"Returned Status Code = {Back.YELLOW}{response.status_code}{Back.RESET} for Hash Request : {Back.MAGENTA}{api_request_hash}{Back.RESET}")
             continue
         hash_leaks = {line.split(':')[0]: int(line.split(':')[1].strip()) for line in response.text.split('\n')}
-        t2 = time()
-        display(':', f"Total Hash Leaks Received = {Back.MAGENTA}{len(hash_leaks)}{Back.RESET} in {Back.MAGENTA}{t2-t1:.2f} seconds{Back.RESET}")
         print('\n'.join(f"{Fore.GREEN}{hash}{Fore.WHITE}:{Fore.BLUE}{password}{Fore.WHITE} => {Fore.CYAN}{hash_leaks[hash[api_request_hash_length:]]}{Fore.RESET}" for hash, password in hash_passwords.items() if hash[api_request_hash_length:] in hash_leaks.keys()))
         password_leaks.update({password: int(hash_leaks[hash[api_request_hash_length:]]) for hash, password in hash_passwords.items() if hash[api_request_hash_length:] in hash_leaks.keys()})
     return password_leaks
