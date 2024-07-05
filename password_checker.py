@@ -5,6 +5,7 @@ import requests
 import sys
 from datetime import date
 from optparse import OptionParser
+from multiprocessing import Pool, cpu_count, Lock
 from time import strftime, localtime, time
 from colorama import Fore, Back, Style
 
@@ -26,9 +27,26 @@ def get_arguments(*args):
         parser.add_option(arg[0], arg[1], dest=arg[2], help=arg[3])
     return parser.parse_args()[0]
 
+thread_count = cpu_count()
+lock = Lock()
 api = "https://api.pwnedpasswords.com/range/"
 api_request_hash_length = 5
 
+def handleRequests(thread_index, hashes):
+    responses = {}
+    for index, hash in enumerate(hashes):
+        t1 = time()
+        response = requests.get(f"{api}{hash}")
+        t2 = time()
+        time_taken = t2-t1
+        if response.status_code != 200:
+            with lock:
+                display('-', f"Returned Status Code = {Back.YELLOW}{response.status_code}{Back.RESET} for Hash Request : {Back.MAGENTA}{hash}{Back.RESET}")
+            continue
+        responses[hash] = response
+        with lock:
+            display(' ', f"Thread {thread_index+1}:{time_taken:.2f}s -> {Fore.CYAN}{hash}{Fore.RESET} ({Fore.GREEN}{(index+1)}/{len(hashes)} ({(index+1*100)/len(hashes):.2f}%){Fore.RESET})")
+    return responses
 def check_passwords(hash_passwords):
     display(':', f"Pre-processing Data for Requests")
     password_leaks = {}
@@ -38,8 +56,21 @@ def check_passwords(hash_passwords):
             api_request_hashes[hash[:api_request_hash_length]] = []
         api_request_hashes[hash[:api_request_hash_length]].append(hash)
     display('+', f"Done Pre-processing Data for Requests")
-    for api_request_hash, hashes in api_request_hashes.items():
-        response = requests.get(f"{api}{api_request_hash}")
+    display(':', f"Starting {Back.MAGENTA}{thread_count}{Back.RESET} Request Threads")
+    request_hashes = list(api_request_hashes.keys())
+    total_request_hashes = len(request_hashes)
+    request_hashes_divisions = [request_hashes[group*total_request_hashes//thread_count: (group+1)*total_request_hashes//thread_count] for group in range(thread_count)]
+    threads = []
+    responses = {}
+    pool = Pool(thread_count)
+    for index, request_hashes_division in enumerate(request_hashes_divisions):
+        threads.append(pool.apply_async(handleRequests, (index, request_hashes_division, )))
+    for thread in threads:
+        responses.update(thread.get())
+    pool.close()
+    pool.join()
+    for api_request_hash, response in responses.items():
+        hashes = api_request_hashes[api_request_hash]
         if response.status_code != 200:
             display('-', f"Returned Status Code = {Back.YELLOW}{response.status_code}{Back.RESET} for Hash Request : {Back.MAGENTA}{api_request_hash}{Back.RESET}")
             continue
