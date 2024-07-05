@@ -45,7 +45,7 @@ def handleRequests(thread_index, hashes):
             continue
         responses[hash] = response
         with lock:
-            display(' ', f"Thread {thread_index+1}:{time_taken:.2f}s -> {Fore.CYAN}{hash}{Fore.RESET} ({Fore.GREEN}{(index+1)}/{len(hashes)} ({(index+1*100)/len(hashes):.2f}%){Fore.RESET})")
+            display(' ', f"Thread {thread_index+1}:{time_taken:.2f}s -> {Fore.CYAN}{hash}{Fore.RESET} ({Fore.GREEN}{(index+1)}/{len(hashes)} ({(index+1)*100/len(hashes):.2f}%){Fore.RESET})")
     return responses
 def check_passwords(hash_passwords):
     display(':', f"Pre-processing Data for Requests")
